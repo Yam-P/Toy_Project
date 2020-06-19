@@ -24,4 +24,7 @@
 #include <sys/inotify.h>
 #include <sys/wait.h>
 
+#define OPEN  0
+#define CLOSE 1
+
 #endif

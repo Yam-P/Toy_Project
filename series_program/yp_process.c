@@ -1,26 +1,50 @@
 #include "yp_func.h"
 
+#define NUM_PROG 3
+#define FILE0 0
+#define PROG1 1
+
 int yp_parent_ps() {
 	return 0;
 }
 
 int yp_child_ps() {
+	char *dir_name = "./programs/";
+	FILE *fp[NUM_PROG] = { NULL, };
+
     //int ret = execl("/usr/bin/find", "find", ".", "-name", "*c", NULL);
 	//FILE *fp = popen("ls -l | sed -n 5p | awk '{print $9}'", "r");
-	FILE *fp = popen("./sleep", "r");
-	if (fp == NULL) {
-		printf("popen() fiail\n");
-		return -1;
+	//fp[0] = popen(" ls -l ./programs | sed -n \"2, \\$p\" ", "r");
+	fp[0] = popen("ls -l ./programs | awk \'$1 ~ /??x+/ {print $9}\'", "r");
+
+	char **progs = fp_exist_progs(fp[0]);
+	printf("Programs in \"%s\"=============\n", dir_name);
+	for (int i = 0; progs[i] != 0; ++i) {
+		printf("%s\n", progs[i]);
 	}
+	if(pclose(fp[0]) == -1) goto err;
+	printf("======================================\n");
 	
-	char line[1024];
-	while (fgets(line, 1024, fp)) {}
+	#if 1
+	for (int i = 0; progs[i] != 0; ++i) {
+		char excute[100];
+		strcpy(excute, dir_name);
+		strcat(excute, progs[i]);
 		
-	pclose(fp);
+		fp[i + 1] = popen(excute, "r");
+		printf("excute file: %s\n", excute);
+		if(pclose(fp[i + 1]) == -1) goto err;
+	}
+	#endif
 
-	printf("%s", line);
+	// How can I free about double ptr...
 
+	free(progs);
 	return 0;
+
+err:
+	printf("popen() or pclose() error!\n");
+	return 1;
 }
 
 int yp_pid() {
