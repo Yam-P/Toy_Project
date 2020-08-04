@@ -3,7 +3,7 @@
 CC = gcc
 CFLAGS = -W -Wall -Werror -Wextra 
 TARGET = test 
-OBJECTS = yp_file.o yp_process.o yp_main.o
+OBJECTS = yp_file.o yp_pid.o yp_main.o
 
 all : $(TARGET)
 

@@ -1,14 +1,10 @@
 #include "yp_func.h"
 
-#define NUM_PROG 3
+#define NUM_PROG 4
 #define FILE0 0
 #define PROG1 1
 
-int yp_parent_ps() {
-	return 0;
-}
-
-int yp_child_ps() {
+int yp_series_implement(void) {
 	char *dir_name = "./programs/";
 	FILE *fp[NUM_PROG] = { NULL, };
 
@@ -22,7 +18,7 @@ int yp_child_ps() {
 	for (int i = 0; progs[i] != 0; ++i) {
 		printf("%s\n", progs[i]);
 	}
-	if(pclose(fp[0]) == -1) goto err;
+	if(pclose(fp[0]) == -1) return -1;
 	printf("======================================\n");
 	
 	#if 1
@@ -33,7 +29,7 @@ int yp_child_ps() {
 		
 		fp[i + 1] = popen(excute, "r");
 		printf("excute file: %s\n", excute);
-		if(pclose(fp[i + 1]) == -1) goto err;
+		if(pclose(fp[i + 1]) == -1) return -1;
 	}
 	#endif
 
@@ -41,9 +37,67 @@ int yp_child_ps() {
 
 	free(progs);
 	return 0;
+}
+
+int yp_inotify(char *dir) {
+	int fd = inotify_init();
+	if (fd == -1) {
+		printf("inotify_init() fail.\n");
+		return -1;
+	}
+
+	int wd = inotify_add_watch(fd, dir, IN_CREATE | IN_DELETE);
+
+	while (1) {
+		char buf[1024];
+		memset(buf, 0, sizeof(buf));
+		struct inotify_event *event = (struct inotify_event *) &buf[0];
+		int read_ret = read(fd, buf, sizeof(buf)); 
+		if (read_ret == -1) {
+			printf("inotify_read() fail.\n");
+			return -1;
+		}
+		else {
+			printf("inotify_read() success!\n");
+		}
+
+		while (read_ret > 0) {
+			if (event->mask & IN_CREATE || event->mask & IN_DELETE) {
+				printf("event occured: %s\n", event->name);
+				printf("Start programs!\n");
+				if (yp_series_implement()) {
+					printf("series_implement() fail.\n");
+					return -1;
+				}
+			}
+
+			uint32_t event_struct_len = sizeof(struct inotify_event) + event->len;
+			event = (struct inotify_event *)(char *)event + event_struct_len;
+			read_ret -= event_struct_len;
+		}
+	}
+
+	close(wd);
+	close(fd);
+	return 0;
+}
+
+int yp_parent_ps() {
+	return 0;
+}
+
+int yp_child_ps() {
+	int err_code = 0;
+	if (yp_inotify("./programs/")) {
+		printf("inotify fail\n");
+		err_code = 2;
+		goto err;
+	}
+	
+	return 0;
 
 err:
-	printf("popen() or pclose() error!\n");
+	printf("err_code: %d\n", err_code);
 	return 1;
 }
 
@@ -70,7 +124,6 @@ int yp_pid() {
 			printf("child %d is not exited\n", pid);
 		}
     }
-
 
     return 0;
 }   
